@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">Shape Masking</string>
+    <string name="todo">TODO</string>
+    <string name="canvas_size">Canvas Size</string>
+    <string name="border_size">Border Size</string>
 </resources>
