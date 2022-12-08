@@ -13,7 +13,7 @@
         android:layout_weight="1"
         tools:layout_editor_absoluteX="1dp"
         tools:layout_editor_absoluteY="1dp"
-        android:stretchColumns="0,1,2">
+        >
 
         <TableRow
             android:layout_width="match_parent"
@@ -211,7 +211,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text=""
+            android:text="100"
             android:textAlignment="textEnd"
             android:textStyle="bold" />
     </LinearLayout>
@@ -219,7 +219,9 @@
     <SeekBar
         android:id="@+id/seekBarCanvasSize"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:max="1000"
+        android:progress="500" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -239,7 +241,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text=""
+            android:text="0"
             android:textAlignment="textEnd"
             android:textStyle="bold" />
     </LinearLayout>
@@ -247,7 +249,9 @@
     <SeekBar
         android:id="@+id/seekBarBorderSize"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:max="25"
+        android:progress="0" />
 
     <Space
         android:layout_width="match_parent"
