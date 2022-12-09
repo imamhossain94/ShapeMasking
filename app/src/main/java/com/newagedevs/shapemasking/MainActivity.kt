@@ -2,20 +2,22 @@ package com.newagedevs.shapemasking
 
 import android.content.res.Resources
 import android.graphics.*
-import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
-import android.widget.ImageView
-import android.widget.SeekBar
+import android.view.MotionEvent
+import android.view.View
+import android.widget.*
 import android.widget.SeekBar.OnSeekBarChangeListener
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.toBitmap
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), View.OnTouchListener {
 
+    private var _xDelta = 0
+    private var _yDelta = 0
 
+    private lateinit var tableLayout: TableLayout
     private lateinit var canvasSizeSeekBar:SeekBar
     private lateinit var borderSizeSeekBar:SeekBar
     private lateinit var canvasSizeTextView:TextView
@@ -26,6 +28,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        tableLayout = findViewById(R.id.tableLayout)
         canvasSizeSeekBar = findViewById(R.id.seekBarCanvasSize)
         borderSizeSeekBar = findViewById(R.id.seekBarBorderSize)
         canvasSizeTextView = findViewById(R.id.textViewCanvasSize)
@@ -72,6 +75,18 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
+
+        val layoutParams = TableLayout.LayoutParams(
+            if(canvasSizeSeekBar.progress <= 1) 5 else canvasSizeSeekBar.progress*4,
+            if(canvasSizeSeekBar.progress <= 1) 5 else canvasSizeSeekBar.progress*6
+        )
+        layoutParams.leftMargin = 0
+        layoutParams.topMargin = 0
+        layoutParams.bottomMargin = -1200
+        layoutParams.rightMargin = -1200
+        tableLayout.layoutParams = layoutParams
+        tableLayout.setOnTouchListener(this)
+
     }
 
 
@@ -83,39 +98,64 @@ class MainActivity : AppCompatActivity() {
         canvasSize: Int,
         borderSize: Int
     ) {
-
-
-        val centreX = (canvasSize  - (canvasSize - borderSize)) /2
-        val centreY = (canvasSize - (canvasSize - borderSize)) /2
-
-
-        val scaledImage = Bitmap.createScaledBitmap(image, canvasSize - borderSize, canvasSize - borderSize, false)
-        val scaledMask = Bitmap.createScaledBitmap(mask, canvasSize - borderSize, canvasSize - borderSize, false)
-
-        val maskBorder = Bitmap.createScaledBitmap(mask, canvasSize, canvasSize, false)
+        val scaledImage = Bitmap.createScaledBitmap(image, canvasSize, canvasSize, false)
+        val scaledMask = Bitmap.createScaledBitmap(mask, canvasSize, canvasSize, false)
 
         val bitmap =
             Bitmap.createBitmap(canvasSize, canvasSize, Bitmap.Config.ARGB_8888)
 
         val mCanvas = Canvas(bitmap)
 
-        val paintBorder = Paint()
-        paintBorder.xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
-        mCanvas.drawBitmap(maskBorder, 0f, 0f, paintBorder)
-        paintBorder.xfermode = null
-
-
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
-        mCanvas.drawBitmap(scaledImage, centreX.toFloat(), centreY.toFloat(), null)
-        mCanvas.drawBitmap(scaledMask, centreX.toFloat(), centreY.toFloat(), paint)
+        mCanvas.drawBitmap(scaledImage, 0f, 0f, null)
+        mCanvas.drawBitmap(scaledMask, 0f, 0f, paint)
         paint.xfermode = null
 
-        view.setImageBitmap(bitmap)
+
+        val stroke = borderSize.toFloat()
+        val newBitmap = Bitmap.createBitmap(bitmap.width + borderSize, bitmap.height + borderSize, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(newBitmap)
+        val paint2 = Paint(Paint.ANTI_ALIAS_FLAG)
+        val filter = PorterDuffColorFilter(Color.BLACK, PorterDuff.Mode.SRC_IN)
+        paint2.colorFilter = filter
+        canvas.drawBitmap(bitmap, -stroke, 0f, paint2)
+        canvas.drawBitmap(bitmap, 0f, -stroke, paint2)
+        canvas.drawBitmap(bitmap, stroke, 0f, paint2)
+        canvas.drawBitmap(bitmap, 0f, stroke, paint2)
+        paint2.colorFilter = null
+
+        canvas.drawBitmap(bitmap, 0f, 0f, paint2)
+
+        view.setImageBitmap(newBitmap)
         view.scaleType = ImageView.ScaleType.CENTER
-        view.layoutParams.height = canvasSize
-        view.layoutParams.width = canvasSize
-        view.background = BitmapDrawable(resources, maskBorder)
+        view.layoutParams.height = canvasSize + borderSize
+        view.layoutParams.width = canvasSize + borderSize
+    }
+
+    override fun onTouch(view: View, event: MotionEvent): Boolean {
+        val X = event.rawX.toInt()
+        val Y = event.rawY.toInt()
+        when (event.action and MotionEvent.ACTION_MASK) {
+            MotionEvent.ACTION_DOWN -> {
+                val lParams = view.layoutParams as TableLayout.LayoutParams
+                _xDelta = X - lParams.leftMargin
+                _yDelta = Y - lParams.topMargin
+            }
+            MotionEvent.ACTION_UP -> {}
+            MotionEvent.ACTION_POINTER_DOWN -> {}
+            MotionEvent.ACTION_POINTER_UP -> {}
+            MotionEvent.ACTION_MOVE -> {
+                val layoutParams = view.layoutParams as TableLayout.LayoutParams
+                layoutParams.leftMargin = X - _xDelta
+                layoutParams.topMargin = Y - _yDelta
+                layoutParams.rightMargin = -250
+                layoutParams.bottomMargin = -250
+                view.layoutParams = layoutParams
+            }
+        }
+        tableLayout.invalidate()
+        return true
     }
 
 }
