@@ -2,48 +2,59 @@ package com.newagedevs.shapemasking
 
 import android.content.res.Resources
 import android.graphics.*
+import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.view.MotionEvent
+import android.view.LayoutInflater
 import android.view.View
-import android.widget.*
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.toBitmap
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 
 
-class MainActivity : AppCompatActivity(), View.OnTouchListener {
+class MainActivity : AppCompatActivity() {
 
-    private var _xDelta = 0
-    private var _yDelta = 0
+    private var displayWidth: Int = 1080
 
-    private lateinit var tableLayout: TableLayout
-    private lateinit var canvasSizeSeekBar:SeekBar
-    private lateinit var borderSizeSeekBar:SeekBar
-    private lateinit var canvasSizeTextView:TextView
-    private lateinit var borderSizeTextView:TextView
-
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var canvasImageView: ImageView
+    private lateinit var canvasSizeSeekBar: SeekBar
+    private lateinit var borderSizeSeekBar: SeekBar
+    private lateinit var canvasSizeTextView: TextView
+    private lateinit var borderSizeTextView: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        tableLayout = findViewById(R.id.tableLayout)
+        displayWidth = Resources.getSystem().displayMetrics.widthPixels
+
+        recyclerView = findViewById(R.id.recyclerView)
+        recyclerView.layoutManager =
+            LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+
+        canvasImageView = findViewById(R.id.canvasImageView)
         canvasSizeSeekBar = findViewById(R.id.seekBarCanvasSize)
         borderSizeSeekBar = findViewById(R.id.seekBarBorderSize)
         canvasSizeTextView = findViewById(R.id.textViewCanvasSize)
         borderSizeTextView = findViewById(R.id.textViewBorderSize)
 
-        canvasSizeSeekBar.progress = Resources.getSystem().displayMetrics.widthPixels/4
-        canvasSizeTextView.text = (Resources.getSystem().displayMetrics.widthPixels/4).toString()
-
+        canvasSizeSeekBar.progress = displayWidth/2
+        canvasSizeTextView.text = (displayWidth/2).toString()
 
         canvasSizeSeekBar.setOnSeekBarChangeListener(object : OnSeekBarChangeListener {
             override fun onStopTrackingTouch(seekBar: SeekBar) {}
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
                 canvasSizeTextView.text = progress.toString()
-                renderImages()
+                renderImages(null)
             }
         })
 
@@ -52,43 +63,42 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
                 borderSizeTextView.text = progress.toString()
-                renderImages()
+                renderImages(null)
             }
         })
 
-        renderImages()
-    }
-
-
-    private fun renderImages() {
+        val shapes = ArrayList<Drawable>()
         for (i in 1..24) {
-            val resID = resources.getIdentifier("imageView_$i", "id", packageName)
             val maskID = resources.getIdentifier("mask_$i", "drawable", packageName)
-
             ResourcesCompat.getDrawable(resources, maskID, null)?.let {
-                maskImage(
-                    view = this.findViewById(resID),
-                    image = BitmapFactory.decodeResource(resources, R.drawable.image),
-                    mask = it.toBitmap(),
-                    canvasSize = if(canvasSizeSeekBar.progress <= 1) 5 else canvasSizeSeekBar.progress,
-                    borderSize = borderSizeSeekBar.progress,
-                )
+                shapes.add(it)
             }
         }
-
-        val layoutParams = TableLayout.LayoutParams(
-            if(canvasSizeSeekBar.progress <= 1) 5 else canvasSizeSeekBar.progress*4,
-            if(canvasSizeSeekBar.progress <= 1) 5 else canvasSizeSeekBar.progress*6
+        recyclerView.adapter = ShapeAdapter(
+            shapeList = shapes,
+            size = (displayWidth / 8) - 26,
+            image = BitmapFactory.decodeResource(resources, R.drawable.image),
+            onClick = {
+                renderImages(it)
+            }
         )
-        layoutParams.leftMargin = 0
-        layoutParams.topMargin = 0
-        layoutParams.bottomMargin = -1200
-        layoutParams.rightMargin = -1200
-        tableLayout.layoutParams = layoutParams
-        tableLayout.setOnTouchListener(this)
 
+        renderImages(null)
     }
 
+
+    private fun renderImages(shape:Drawable?) {
+        val mask = shape?:ContextCompat.getDrawable(this, R.drawable.mask_1)
+
+        maskImage(
+            view = canvasImageView,
+            image = BitmapFactory.decodeResource(resources, R.drawable.image),
+            mask = mask!!.toBitmap(),
+            canvasSize = if (canvasSizeSeekBar.progress <= 1) 5 else canvasSizeSeekBar.progress,
+            borderSize = borderSizeSeekBar.progress,
+        )
+
+    }
 
 
     private fun maskImage(
@@ -97,7 +107,7 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
         mask: Bitmap,
         canvasSize: Int,
         borderSize: Int
-    ) {
+    ): Bitmap {
         val scaledImage = Bitmap.createScaledBitmap(image, canvasSize, canvasSize, false)
         val scaledMask = Bitmap.createScaledBitmap(mask, canvasSize, canvasSize, false)
 
@@ -114,7 +124,11 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
 
 
         val stroke = borderSize.toFloat()
-        val newBitmap = Bitmap.createBitmap(bitmap.width + borderSize, bitmap.height + borderSize, Bitmap.Config.ARGB_8888)
+        val newBitmap = Bitmap.createBitmap(
+            bitmap.width + borderSize,
+            bitmap.height + borderSize,
+            Bitmap.Config.ARGB_8888
+        )
         val canvas = Canvas(newBitmap)
         val paint2 = Paint(Paint.ANTI_ALIAS_FLAG)
         val filter = PorterDuffColorFilter(Color.BLACK, PorterDuff.Mode.SRC_IN)
@@ -131,31 +145,52 @@ class MainActivity : AppCompatActivity(), View.OnTouchListener {
         view.scaleType = ImageView.ScaleType.CENTER
         view.layoutParams.height = canvasSize + borderSize
         view.layoutParams.width = canvasSize + borderSize
+
+        return newBitmap
     }
 
-    override fun onTouch(view: View, event: MotionEvent): Boolean {
-        val X = event.rawX.toInt()
-        val Y = event.rawY.toInt()
-        when (event.action and MotionEvent.ACTION_MASK) {
-            MotionEvent.ACTION_DOWN -> {
-                val lParams = view.layoutParams as TableLayout.LayoutParams
-                _xDelta = X - lParams.leftMargin
-                _yDelta = Y - lParams.topMargin
-            }
-            MotionEvent.ACTION_UP -> {}
-            MotionEvent.ACTION_POINTER_DOWN -> {}
-            MotionEvent.ACTION_POINTER_UP -> {}
-            MotionEvent.ACTION_MOVE -> {
-                val layoutParams = view.layoutParams as TableLayout.LayoutParams
-                layoutParams.leftMargin = X - _xDelta
-                layoutParams.topMargin = Y - _yDelta
-                layoutParams.rightMargin = -250
-                layoutParams.bottomMargin = -250
-                view.layoutParams = layoutParams
-            }
+    class ShapeAdapter(
+        private val shapeList: List<Drawable>,
+        private var image: Bitmap,
+        private var size: Int,
+        val onClick: (Drawable) -> Unit
+    ) :
+        RecyclerView.Adapter<ShapeAdapter.ViewHolder>() {
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val view = LayoutInflater.from(parent.context)
+                .inflate(R.layout.shape_view, parent, false)
+            return ViewHolder(view)
         }
-        tableLayout.invalidate()
-        return true
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            var shape = shapeList[position].toBitmap()
+            shape = Bitmap.createScaledBitmap(shape, size, size, false)
+            image = Bitmap.createScaledBitmap(image, size, size, false)
+
+            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+            paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
+            canvas.drawBitmap(image, 0f, 0f, null)
+            canvas.drawBitmap(shape, 0f, 0f, paint)
+            paint.xfermode = null
+
+            holder.view.setImageBitmap(bitmap)
+            holder.view.scaleType = ImageView.ScaleType.CENTER
+            holder.view.layoutParams.height = size
+            holder.view.layoutParams.width = size
+
+            holder.view.setOnClickListener{ onClick(shapeList[position]) }
+        }
+
+        override fun getItemCount(): Int {
+            return shapeList.size
+        }
+
+        class ViewHolder(ItemView: View) : RecyclerView.ViewHolder(ItemView) {
+            val view: ImageView = itemView.findViewById(R.id.imageview)
+        }
     }
 
 }
