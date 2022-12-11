@@ -3,4 +3,7 @@
     <string name="todo">TODO</string>
     <string name="canvas_size">Canvas Size</string>
     <string name="border_size">Border Size</string>
+    <string name="shape">Shape</string>
+    <string name="_100">100</string>
+    <string name="_0">0</string>
 </resources>

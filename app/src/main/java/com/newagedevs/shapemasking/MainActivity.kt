@@ -1,6 +1,5 @@
 package com.newagedevs.shapemasking
 
-import android.annotation.SuppressLint
 import android.content.res.Resources
 import android.graphics.*
 import android.os.Bundle
@@ -11,15 +10,12 @@ import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
 import android.widget.TextView
-import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import org.xmlpull.v1.XmlPullParser
-import java.util.*
 
 
 class MainActivity : AppCompatActivity() {
@@ -126,49 +122,9 @@ class MainActivity : AppCompatActivity() {
         paint.xfermode = null
 
         view.setImageBitmap(drawBorder(maskedBitmap, borderSize.toFloat()))
-
-
-//        val vectorDrawable = VectorDrawableParser.parsedVectorDrawable(resources, mask)
-//
-//        if (vectorDrawable != null) {
-//            var strokeBitmap =
-//                Bitmap.createBitmap(
-//                    vectorDrawable.viewportWidth.toInt(),
-//                    vectorDrawable.viewportHeight.toInt(),
-//                    Bitmap.Config.ARGB_8888
-//                )
-//
-//            val strokeCanvas = Canvas(strokeBitmap)
-//            val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-//            strokePaint.style = Paint.Style.STROKE
-//            strokePaint.strokeWidth = borderSize.toFloat()
-//
-//            strokePaint.color = Color.parseColor("#000000")
-//
-//            for (path in vectorDrawable.pathData) {
-//                val data = SvgPath(path!!)
-//                strokeCanvas.drawPath(data.generatePath(), strokePaint)
-//            }
-//
-//            strokeBitmap = Bitmap.createScaledBitmap(strokeBitmap, canvasSize, canvasSize, false)
-//
-//
-//            val  clipBitmap =
-//                Bitmap.createBitmap(canvasSize, canvasSize, Bitmap.Config.ARGB_8888)
-//
-//            val clipCanvas = Canvas(maskedBitmap)
-//            val clipPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-//
-//            clipCanvas.drawBitmap(maskedBitmap, 0f, 0f, clipPaint)
-//            clipCanvas.drawBitmap(strokeBitmap, 0f, 0f, clipPaint)
-//
-//            view.setImageBitmap(maskedBitmap)
-//        }
-
-
     }
 
-    fun drawBorder(bitmap: Bitmap, stroke: Float): Bitmap? {
+    private fun drawBorder(bitmap: Bitmap, stroke: Float): Bitmap? {
         val options = BitmapFactory.Options()
         options.inMutable = true
         val newBitmap = Bitmap.createBitmap(
@@ -176,16 +132,21 @@ class MainActivity : AppCompatActivity() {
             (bitmap.height + (2 * stroke)).toInt(),
             Bitmap.Config.ARGB_8888
         )
+
+        // Calculate bitmap start point
+        val x: Float = ((newBitmap.width - bitmap.width) / 2).toFloat()
+        val y: Float = ((newBitmap.height - bitmap.height) / 2).toFloat()
+
         val canvas = Canvas(newBitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val filter = PorterDuffColorFilter(Color.BLACK, PorterDuff.Mode.SRC_IN)
         paint.colorFilter = filter
-        canvas.drawBitmap(bitmap, -stroke, 0f, paint)
-        canvas.drawBitmap(bitmap, 0f, -stroke, paint)
-        canvas.drawBitmap(bitmap, stroke, 0f, paint)
-        canvas.drawBitmap(bitmap, 0f, stroke, paint)
+        canvas.drawBitmap(bitmap, -stroke + x, y, paint)
+        canvas.drawBitmap(bitmap, x, -stroke + y, paint)
+        canvas.drawBitmap(bitmap, stroke + x, y, paint)
+        canvas.drawBitmap(bitmap, x, stroke + y, paint)
         paint.colorFilter = null
-        canvas.drawBitmap(bitmap, 0f, 0f, paint)
+        canvas.drawBitmap(bitmap, x, y, paint)
         return newBitmap
     }
 
@@ -235,82 +196,4 @@ class MainActivity : AppCompatActivity() {
             val view: ImageView = itemView.findViewById(R.id.imageview)
         }
     }
-
 }
-
-// ---------------------
-
-data class ParsedVectorDrawable(
-    val width: Float,
-    val height: Float,
-    val viewportWidth: Float,
-    val viewportHeight: Float,
-    val pathData: ArrayList<String?>
-)
-
-object VectorDrawableParser {
-
-    private val digitsOnly = Regex("[^0-9.]")
-
-    @SuppressLint("ResourceType")
-    fun parsedVectorDrawable(
-        resources: Resources,
-        @DrawableRes drawable: Int
-
-    ): ParsedVectorDrawable? {
-        val pathData: ArrayList<String?> = ArrayList()
-        var width: Float? = null
-        var height: Float? = null
-        var viewportWidth: Float? = null
-        var viewportHeight: Float? = null
-
-        // This is very simple parser, it doesn't support <group> tag, nested tags and other stuff
-        resources.getXml(drawable).use { xml ->
-            var event = xml.eventType
-
-            while (event != XmlPullParser.END_DOCUMENT) {
-
-                if (event != XmlPullParser.START_TAG) {
-                    event = xml.next()
-                    continue
-                }
-
-                when (xml.name) {
-                    "vector" -> {
-                        width = xml.getAttributeValue(getAttrPosition(xml, "width"))
-                            .replace(digitsOnly, "")
-                            .toFloatOrNull()
-                        height = xml.getAttributeValue(getAttrPosition(xml, "height"))
-                            .replace(digitsOnly, "")
-                            .toFloatOrNull()
-                        viewportWidth = xml.getAttributeValue(getAttrPosition(xml, "viewportWidth"))
-                            .toFloatOrNull()
-                        viewportHeight =
-                            xml.getAttributeValue(getAttrPosition(xml, "viewportHeight"))
-                                .toFloatOrNull()
-                    }
-                    "path" -> {
-                        pathData.add(xml.getAttributeValue(getAttrPosition(xml, "pathData")))
-                    }
-                }
-
-                event = xml.next()
-            }
-
-        }
-
-        return ParsedVectorDrawable(
-            width ?: return null,
-            height ?: return null,
-            viewportWidth ?: return null,
-            viewportHeight ?: return null,
-            pathData,
-        )
-    }
-
-    private fun getAttrPosition(xml: XmlPullParser, attrName: String): Int =
-        (0 until xml.attributeCount)
-            .firstOrNull { i -> xml.getAttributeName(i) == attrName }
-            ?: -1
-}
-// https://gist.github.com/aednlaxer/9e3ccc56bb72253966b2e298e2700751

@@ -7,7 +7,7 @@
 
     <group>
         <group
-            android:translateX="34.059"
+            android:translateX="0"
             android:translateY="20">
             <group android:translateX="32.542">
                 <path

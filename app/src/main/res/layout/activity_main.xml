@@ -23,7 +23,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="10dp"
-        android:text="Shape"
+        android:text="@string/shape"
         android:textStyle="bold" />
 
     <androidx.recyclerview.widget.RecyclerView
@@ -55,7 +55,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="100"
+            android:text="@string/_100"
             android:textAlignment="textEnd"
             android:textStyle="bold" />
     </LinearLayout>
@@ -85,7 +85,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="0"
+            android:text="@string/_0"
             android:textAlignment="textEnd"
             android:textStyle="bold" />
     </LinearLayout>
