@@ -3,19 +3,16 @@ package com.newagedevs.shapemasking
 import android.content.res.Resources
 import android.graphics.*
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.slaviboy.svgpath.SvgPath
 
 
 class MainActivity : AppCompatActivity() {
@@ -70,7 +67,7 @@ class MainActivity : AppCompatActivity() {
         })
 
         val shapes = ArrayList<Int>()
-        for (i in 1..64) {
+        for (i in 1..6) {
             shapes.add(resources.getIdentifier("shape_$i", "drawable", packageName))
         }
         recyclerView.adapter = ShapeAdapter(
@@ -121,10 +118,51 @@ class MainActivity : AppCompatActivity() {
         maskedCanvas.drawBitmap(scaledMask, 0f, 0f, paint)
         paint.xfermode = null
 
-        view.setImageBitmap(drawBorder(maskedBitmap, borderSize.toFloat()))
+        view.setImageBitmap(drawBorderUsingVectorPath(maskedBitmap, mask, borderSize.toFloat()))
+
+        //view.setImageBitmap(drawBorderColorFilter(maskedBitmap, borderSize.toFloat()))
+
     }
 
-    private fun drawBorder(bitmap: Bitmap, stroke: Float): Bitmap? {
+    private fun drawBorderUsingVectorPath(bitmap: Bitmap, mask: Int, stroke: Float): Bitmap {
+        val vectorDrawable = VectorDrawableParser.parsedVectorDrawable(resources, mask)
+
+        if (vectorDrawable != null) {
+            var strokeBitmap =
+                Bitmap.createBitmap(
+                    vectorDrawable.viewportWidth.toInt(),
+                    vectorDrawable.viewportHeight.toInt(),
+                    Bitmap.Config.ARGB_8888
+                )
+
+            val strokeCanvas = Canvas(strokeBitmap)
+            val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+            strokePaint.style = Paint.Style.STROKE
+            strokePaint.strokeWidth = stroke
+
+            strokePaint.color = Color.parseColor("#000000")
+
+            for (path in vectorDrawable.pathData) {
+                val data = SvgPath(path!!)
+                strokeCanvas.drawPath(data.generatePath(), strokePaint)
+            }
+
+            strokeBitmap =
+                Bitmap.createScaledBitmap(strokeBitmap, bitmap.height, bitmap.width, false)
+
+            val clipCanvas = Canvas(bitmap)
+            val clipPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+            clipCanvas.drawBitmap(bitmap, 0f, 0f, clipPaint)
+            clipCanvas.drawBitmap(strokeBitmap, 0f, 0f, clipPaint)
+
+            return bitmap
+        }
+
+        return bitmap
+    }
+
+    private fun drawBorderColorFilter(bitmap: Bitmap, stroke: Float): Bitmap {
         val options = BitmapFactory.Options()
         options.inMutable = true
         val newBitmap = Bitmap.createBitmap(
@@ -150,50 +188,6 @@ class MainActivity : AppCompatActivity() {
         return newBitmap
     }
 
-
-    class ShapeAdapter(
-        private val shapeList: List<Int>,
-        private var image: Bitmap,
-        private var size: Int,
-        val onClick: (Int) -> Unit
-    ) :
-        RecyclerView.Adapter<ShapeAdapter.ViewHolder>() {
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.shape_view, parent, false)
-            return ViewHolder(view)
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-
-            var shape =
-                ContextCompat.getDrawable(holder.view.context, shapeList[position])!!.toBitmap()
-            shape = Bitmap.createScaledBitmap(shape, size, size, false)
-            image = Bitmap.createScaledBitmap(image, size, size, false)
-
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-            paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
-            canvas.drawBitmap(image, 0f, 0f, null)
-            canvas.drawBitmap(shape, 0f, 0f, paint)
-            paint.xfermode = null
-
-            holder.view.setImageBitmap(bitmap)
-            holder.view.scaleType = ImageView.ScaleType.CENTER
-            holder.view.layoutParams.height = size
-            holder.view.layoutParams.width = size
-
-            holder.view.setOnClickListener { onClick(shapeList[position]) }
-        }
-
-        override fun getItemCount(): Int {
-            return shapeList.size
-        }
-
-        class ViewHolder(ItemView: View) : RecyclerView.ViewHolder(ItemView) {
-            val view: ImageView = itemView.findViewById(R.id.imageview)
-        }
-    }
 }
+
+
